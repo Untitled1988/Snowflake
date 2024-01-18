@@ -1,22 +1,24 @@
 name: snowflake-devops
 
-# Controls when the action will run. 
 on:
   push:
     branches:
       - main
+      - DEV
+      - QA
+      - PROD
     paths:
       - 'migrations/**'
 
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
 jobs:
   deploy-snowflake-changes-job:
     runs-on: ubuntu-latest
+    environment: 
+      name: ${{ github.ref == 'refs/heads/main' && 'DEV' || github.ref == 'refs/heads/QA' && 'QA' || 'PROD' }}
 
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Checkout repository
         uses: actions/checkout@v2
 
@@ -25,16 +27,6 @@ jobs:
         with:
           python-version: 3.8.x
 
-      - name: Set environment variables
-        run: |
-          if [[ "${{ github.ref }}" == "refs/heads/PROD" ]]; then
-            echo "ENVIRONMENT_NAME=PROD" >> $GITHUB_ENV
-          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "ENVIRONMENT_NAME=DEV" >> $GITHUB_ENV
-          else
-            echo "ENVIRONMENT_NAME=DEV" >> $GITHUB_ENV
-          fi
-      
       - name: Run schemachange
         env:
           SF_ACCOUNT: ${{ secrets.SF_ACCOUNT }}
@@ -50,4 +42,4 @@ jobs:
           pip install schemachange
           
           echo "Step 2: Running schemachange"
-          schemachange -f $GITHUB_WORKSPACE/migrations -a $SF_ACCOUNT -u $SF_USERNAME -r $SF_ROLE -w $SF_WAREHOUSE -d $SF_DATABASE -c $SF_DATABASE.SCHEMACHANGE.CHANGE_HISTORY --create-change-history-table
+          schemachange -f $GITHUB_WORKSPACE/migrations -a $SF_ACCOUNT -u $SF_USERNAME -r $SF_ROLE -w $SF_WAREHOUSE -d $SF_DATABASE -c $SF_DATABASE.SCHEMACHANGE.CHANGE_HISTORY --create-change-history-table  
